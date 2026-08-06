@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.1 covers Unity (2021.2+, .NET Standard 2.1 API
+         compatibility level) and older .NET runtimes; net8.0 gets modern
+         .NET desktop/server consumers the current BCL instead of the
+         netstandard2.1 shims. -->
+    <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+    <!-- `required`/`init` need C# 11, which in turn needs the
+         RequiredMemberAttribute/IsExternalInit marker types — absent from
+         netstandard2.1's own BCL, hence PolySharp below (compile-time-only,
+         no runtime dependency) to polyfill them for that target. -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Unity/IL2CPP builds are AOT-compiled ahead of time; warn on any
+         trimming/AOT-incompatible pattern (dynamic, reflection-heavy
+         serialization, etc.) creeping in. -->
+    <IsAotCompatible Condition="'$(TargetFramework)' == 'net8.0'">true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <PackageId>Licensr.Sdk</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Licensr</Authors>
+    <Description>Official C# SDK for the Licensr license API: validation, seat/domain activation, offline EdDSA token verification, and hosted checkout. Targets netstandard2.1 (Unity, older .NET) and net8.0.</Description>
+    <PackageProjectUrl>https://docs.licensr.app/plugin-integration</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/licensr/licensr-dotnet</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Built into net8.0's BCL; netstandard2.1 needs the package (also
+         pulls in System.Runtime.CompilerServices.Unsafe transitively). -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" Condition="'$(TargetFramework)' == 'netstandard2.1'" />
+    <!-- The BCL has no Ed25519 primitive on any target (see
+         dotnet/runtime#63174) — BouncyCastle.Cryptography is pure managed
+         code (no P/Invoke, so IL2CPP-safe) and is this SDK's only
+         dependency, exactly mirroring sdks/js's one dependency on `jose`
+         for the same reason: offline EdDSA token verification. -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <!-- Build-time only (source generator, PrivateAssets="all" — no
+         runtime dependency, doesn't appear in the packed .nuspec) —
+         polyfills `required`/`init`/etc. for netstandard2.1. -->
+    <PackageReference Include="PolySharp" Version="1.14.1" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>
