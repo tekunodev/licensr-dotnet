@@ -40,7 +40,13 @@ if [ "$CHECK" = 1 ]; then
     diff -rq --exclude="*.asmdef" --exclude="*.meta" "$TARGET" "$DEST" || true
     exit 1
   fi
-  echo "upm/Runtime is in sync with Licensr.Sdk/."
+  CS_VER="$(sed -n 's/.*<Version>\([^<]*\)<\/Version>.*/\1/p' Licensr.Sdk/Licensr.Sdk.csproj | head -1)"
+  UPM_VER="$(python3 -c "import json; print(json.load(open('upm/package.json'))['version'])")"
+  if [ "$CS_VER" != "$UPM_VER" ]; then
+    echo "Version mismatch: Licensr.Sdk.csproj is $CS_VER but upm/package.json is $UPM_VER" >&2
+    exit 1
+  fi
+  echo "upm/Runtime is in sync with Licensr.Sdk/ (version $CS_VER)."
 else
   echo "Synced $(find "$DEST" -name '*.cs' | wc -l | tr -d ' ') file(s) into $DEST/."
 fi
