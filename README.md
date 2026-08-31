@@ -175,6 +175,10 @@ dotnet test --filter "FullyQualifiedName~ConformanceTests"
 
 The `rate_limit_exceeded` case additionally requires `CONFORMANCE_RUN_SLOW=1` (it fires 61 requests to trip the bucket) — a plain local run skips just that one case. See `.github/workflows/test-sdk-dotnet.yaml` for how CI wires up the same four steps as one job.
 
+## Releasing
+
+Bump `<Version>` in `Licensr.Sdk.csproj` **and** `"version"` in `upm/package.json`, run `scripts/sync-upm.sh`, commit to `main`, then tag `dotnet/vX.Y.Z` and push the tag (triggers NuGet publish + mirror). Step-by-step: [`docs/SDK_PROGRAM.md` §2](../../docs/SDK_PROGRAM.md#2-releasing-an-sdk-update) or [`sdks/RELEASING.md`](../RELEASING.md).
+
 ## Unity UPM package
 
 [`upm/`](upm/) is a self-contained [UPM package](https://docs.unity3d.com/Manual/cus-layout.html) — `package.json`, an `.asmdef`, and a `Runtime/` folder that's an exact copy of this project's source (no Unity-only code, no `#if UNITY` branches needed). Run `scripts/sync-upm.sh` after changing anything under `Licensr.Sdk/` and commit the result — CI (`test-sdk-dotnet.yaml`) fails the build if the two drift.
