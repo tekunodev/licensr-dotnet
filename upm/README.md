@@ -9,13 +9,13 @@ Read the [main SDK README](../README.md) for the full API, quickstart, and offli
 Package Manager → `+` → "Install package from git URL":
 
 ```
-https://github.com/licensr/licensr-dotnet.git?path=upm
+https://github.com/tekunodev/licensr-dotnet.git?path=upm
 ```
 
 Or add directly to `Packages/manifest.json`:
 
 ```json
-"com.licensr.sdk": "https://github.com/licensr/licensr-dotnet.git?path=upm"
+"com.licensr.sdk": "https://github.com/tekunodev/licensr-dotnet.git?path=upm"
 ```
 
 ## Required dependency: BouncyCastle.Cryptography

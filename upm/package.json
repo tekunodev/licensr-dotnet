@@ -5,7 +5,7 @@
   "description": "Official Licensr SDK for Unity: license validation, seat/domain activation, offline EdDSA token verification, and hosted checkout. Runtime/ is a straight copy of the NuGet package's C# source — see sdks/dotnet/scripts/sync-upm.sh.",
   "unity": "2021.2",
   "documentationUrl": "https://docs.licensr.app/plugin-integration",
-  "licensesUrl": "https://github.com/licensr/licensr-dotnet/blob/main/LICENSE",
+  "licensesUrl": "https://github.com/tekunodev/licensr-dotnet/blob/main/LICENSE",
   "author": {
     "name": "Licensr",
     "url": "https://licensr.app"
@@ -13,6 +13,6 @@
   "keywords": ["licensing", "licensr", "drm", "in-app-purchase"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/licensr/licensr-dotnet.git"
+    "url": "https://github.com/tekunodev/licensr-dotnet.git"
   }
 }

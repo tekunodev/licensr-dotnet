@@ -15,7 +15,7 @@ dotnet add package Licensr.Sdk
 **Unity**: NuGet packages don't resolve well inside Unity's package system, so this SDK ships a separate [UPM](https://docs.unity3d.com/Manual/upm-ui.html) package from [`sdks/dotnet/upm/`](upm/) — add it via the Package Manager's "Install package from git URL":
 
 ```
-https://github.com/licensr/licensr-dotnet.git?path=upm
+https://github.com/tekunodev/licensr-dotnet.git?path=upm
 ```
 
 ## Quickstart
