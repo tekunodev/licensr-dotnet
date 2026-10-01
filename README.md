@@ -40,6 +40,8 @@ else if (result.Entitlement == Entitlement.Limited)
 }
 ```
 
+The result keeps what you act on at the top level: `Valid`, `Status` (why, for your message), `Entitlement` and `FeatureFlags`. Plan and limit details are grouped under `result.License` (`PlanId`, `ActivationMode`, `MaxSeats`, `MaxDomains`, `SeatsInUse`, `ExpiresAt`). They are for display only; never use them to decide whether to unlock.
+
 Every method is `Task`-returning — `await` it directly, `yield return` it from a Unity coroutine, or call `.AsUniTask()` if you use [UniTask](https://github.com/Cysharp/UniTask).
 
 ## API
