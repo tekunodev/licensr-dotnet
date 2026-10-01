@@ -89,7 +89,7 @@ Available events: `Validated`, `Activated`, `Deactivated`, `TokenIssued`, `Retry
 using Licensr.Sdk.Offline;
 
 var token = await client.TokenAsync(new ValidateRequest { LicenseKey = licenseKey });
-var claims = await OfflineTokenVerifier.VerifyAsync(token.Token, token.JwksUrl);
+var claims = await OfflineTokenVerifier.VerifyAsync(token.Token, token.Details.JwksUrl);
 // claims.Valid, claims.Entitlement, claims.Exp, ...
 ```
 

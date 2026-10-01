@@ -30,7 +30,7 @@ public enum LicenseStatus
     Expired,
 }
 
-/// <summary><c>Full</c> when valid, <c>None</c> when cut off, <c>Limited</c> alongside <see cref="ValidateResult.Fallback"/>.</summary>
+/// <summary><c>Full</c> when valid, <c>None</c> when cut off, <c>Limited</c> when an expired license on a fallback plan keeps reduced access.</summary>
 [JsonConverter(typeof(EntitlementJsonConverter))]
 public enum Entitlement
 {
@@ -44,44 +44,52 @@ public sealed class ValidateRequest
     public required string LicenseKey { get; init; }
 }
 
-public sealed class ValidateResult
+/// <summary>Information about the license. Nothing here decides access; safe to ignore.</summary>
+public sealed class LicenseDetails
 {
-    [JsonPropertyName("valid")]
-    public bool Valid { get; set; }
-
-    [JsonPropertyName("status")]
-    public LicenseStatus Status { get; set; }
-
     [JsonPropertyName("plan_id")]
     public string? PlanId { get; set; }
-
-    [JsonPropertyName("plan_name")]
-    public string? PlanName { get; set; }
 
     [JsonPropertyName("activation_mode")]
     public ActivationType? ActivationMode { get; set; }
 
+    /// <summary>Devices or users allowed. <c>null</c> means unlimited.</summary>
     [JsonPropertyName("max_seats")]
     public long? MaxSeats { get; set; }
 
+    /// <summary>Websites allowed. <c>null</c> means unlimited.</summary>
     [JsonPropertyName("max_domains")]
     public long? MaxDomains { get; set; }
 
     [JsonPropertyName("seats_in_use")]
     public long? SeatsInUse { get; set; }
 
+    /// <summary>When the license expires. <c>null</c> means it never expires.</summary>
     [JsonPropertyName("expires_at")]
     public string? ExpiresAt { get; set; }
+}
 
+public sealed class ValidateResult
+{
+    /// <summary>The answer you gate on: <c>true</c> unlocks your product, <c>false</c> keeps it locked.</summary>
+    [JsonPropertyName("valid")]
+    public bool Valid { get; set; }
+
+    /// <summary>Why: pick the message to show the customer. Do not gate access on it.</summary>
+    [JsonPropertyName("status")]
+    public LicenseStatus Status { get; set; }
+
+    /// <summary>Optional. <c>Limited</c> means expired but a fallback plan keeps reduced access.</summary>
     [JsonPropertyName("entitlement")]
     public Entitlement Entitlement { get; set; }
 
-    /// <summary><c>true</c> only when an *expired* license is on a perpetual-fallback plan.</summary>
-    [JsonPropertyName("fallback")]
-    public bool Fallback { get; set; }
-
+    /// <summary>Optional. Custom per-plan settings you defined.</summary>
     [JsonPropertyName("feature_flags")]
     public JsonElement? FeatureFlags { get; set; }
+
+    /// <summary>Plan, limits and expiry. Informational only.</summary>
+    [JsonPropertyName("license")]
+    public LicenseDetails License { get; set; } = new();
 }
 
 public sealed class ActivateRequest
@@ -97,19 +105,27 @@ public sealed class ActivateRequest
     public string? Label { get; init; }
 }
 
-public sealed class ActivateResult
+/// <summary>What was activated (an echo of your request). Informational only.</summary>
+public sealed class ActivationInfo
 {
-    [JsonPropertyName("activation_id")]
-    public string ActivationId { get; set; } = "";
-
-    [JsonPropertyName("activation_type")]
-    public ActivationType ActivationType { get; set; }
+    [JsonPropertyName("type")]
+    public ActivationType Type { get; set; }
 
     [JsonPropertyName("identifier")]
     public string Identifier { get; set; } = "";
+}
+
+public sealed class ActivateResult
+{
+    /// <summary>Save this: you need it to deactivate later.</summary>
+    [JsonPropertyName("activation_id")]
+    public string ActivationId { get; set; } = "";
 
     [JsonPropertyName("feature_flags")]
     public JsonElement? FeatureFlags { get; set; }
+
+    [JsonPropertyName("activation")]
+    public ActivationInfo Activation { get; set; } = new();
 }
 
 public sealed class DeactivateRequest
@@ -160,12 +176,9 @@ public sealed class ActivationsResult
     public List<ActivationListItem> Activations { get; set; } = new();
 }
 
-public sealed class TokenResult
+/// <summary>How to verify the offline token and when to refresh it.</summary>
+public sealed class TokenDetails
 {
-    /// <summary>EdDSA-signed JWT — verify with <see cref="Offline.OfflineTokenVerifier.VerifyAsync"/>.</summary>
-    [JsonPropertyName("token")]
-    public string Token { get; set; } = "";
-
     [JsonPropertyName("algorithm")]
     public string Algorithm { get; set; } = "";
 
@@ -182,7 +195,17 @@ public sealed class TokenResult
     public string JwksUrl { get; set; } = "";
 }
 
-/// <summary>Claims embedded in the offline token (<see cref="TokenResult.Token"/>); mirrors <see cref="ValidateResult"/>.</summary>
+public sealed class TokenResult
+{
+    /// <summary>EdDSA-signed JWT — verify with <see cref="Offline.OfflineTokenVerifier.VerifyAsync"/> (pass <c>Details.JwksUrl</c>).</summary>
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
+    [JsonPropertyName("details")]
+    public TokenDetails Details { get; set; } = new();
+}
+
+/// <summary>Claims embedded in the offline token (<see cref="TokenResult.Token"/>). Flat, as in any JWT; carries the same facts as <see cref="ValidateResult"/>.</summary>
 public sealed class OfflineTokenClaims
 {
     [JsonPropertyName("sub")]

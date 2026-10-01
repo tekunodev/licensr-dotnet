@@ -20,9 +20,9 @@ public class LicensrClientTests
     public async Task ValidateAsync_ParsesResponse_AndFiresValidatedEvent()
     {
         var transport = new FakeHttpTransport().EnqueueJson(200, """
-            {"valid": true, "status": "active", "plan_id": "pro", "plan_name": "Pro",
-             "activation_mode": "seat", "max_seats": 3, "max_domains": null, "seats_in_use": 1,
-             "expires_at": null, "entitlement": "full", "fallback": false, "feature_flags": {"beta": true}}
+            {"valid": true, "status": "active", "entitlement": "full", "feature_flags": {"beta": true},
+             "license": {"plan_id": "pro", "activation_mode": "seat", "max_seats": 3, "max_domains": null,
+                         "seats_in_use": 1, "expires_at": null}}
             """);
         var client = MakeClient(transport);
         ValidateResult? fired = null;
@@ -32,10 +32,10 @@ public class LicensrClientTests
 
         Assert.True(result.Valid);
         Assert.Equal(LicenseStatus.Active, result.Status);
-        Assert.Equal("pro", result.PlanId);
-        Assert.Equal(ActivationType.Seat, result.ActivationMode);
-        Assert.Equal(3, result.MaxSeats);
-        Assert.Null(result.MaxDomains);
+        Assert.Equal("pro", result.License.PlanId);
+        Assert.Equal(ActivationType.Seat, result.License.ActivationMode);
+        Assert.Equal(3, result.License.MaxSeats);
+        Assert.Null(result.License.MaxDomains);
         Assert.Equal(Entitlement.Full, result.Entitlement);
         Assert.True(result.FeatureFlags!.Value.GetProperty("beta").GetBoolean());
         Assert.Same(result, fired);
@@ -45,6 +45,44 @@ public class LicensrClientTests
         Assert.Contains("v1/license/validate", sent.Url);
         Assert.Contains("\"license_key\":\"lic_abc\"", sent.Body);
         Assert.Contains("\"plugin_slug\":\"my-plugin\"", sent.Body);
+    }
+
+    [Fact]
+    public async Task ActivateAsync_ParsesNestedActivation()
+    {
+        var transport = new FakeHttpTransport().EnqueueJson(200, """
+            {"activation_id": "act-1", "feature_flags": null,
+             "activation": {"type": "domain", "identifier": "example.com"}}
+            """);
+        var client = MakeClient(transport);
+
+        var result = await client.ActivateAsync(new ActivateRequest
+        {
+            LicenseKey = "lic_abc",
+            ActivationType = ActivationType.Domain,
+            Identifier = "example.com",
+        });
+
+        Assert.Equal("act-1", result.ActivationId);
+        Assert.Equal(ActivationType.Domain, result.Activation.Type);
+        Assert.Equal("example.com", result.Activation.Identifier);
+    }
+
+    [Fact]
+    public async Task TokenAsync_ParsesNestedDetails()
+    {
+        var transport = new FakeHttpTransport().EnqueueJson(200, """
+            {"token": "jwt-value",
+             "details": {"algorithm": "EdDSA", "kid": "kid-1", "issued_at": "2027-01-01T00:00:00Z",
+                         "expires_at": "2027-02-01T00:00:00Z", "jwks_url": "https://api.licensr.app/v1/license/jwks/acme/p.json"}}
+            """);
+        var client = MakeClient(transport);
+
+        var result = await client.TokenAsync(new ValidateRequest { LicenseKey = "lic_abc" });
+
+        Assert.Equal("jwt-value", result.Token);
+        Assert.Equal("kid-1", result.Details.Kid);
+        Assert.Equal("https://api.licensr.app/v1/license/jwks/acme/p.json", result.Details.JwksUrl);
     }
 
     [Fact]
@@ -111,7 +149,7 @@ public class LicensrClientTests
     {
         var transport = new FakeHttpTransport()
             .EnqueueJson(503, """{"detail": {"error": "unavailable", "message": "down"}}""")
-            .EnqueueJson(200, """{"valid": false, "status": "inactive", "plan_id": null, "plan_name": null, "activation_mode": null, "max_seats": null, "max_domains": null, "seats_in_use": null, "expires_at": null, "entitlement": "none", "fallback": false, "feature_flags": null}""");
+            .EnqueueJson(200, """{"valid": false, "status": "inactive", "entitlement": "none", "feature_flags": null, "license": {"plan_id": null, "activation_mode": null, "max_seats": null, "max_domains": null, "seats_in_use": null, "expires_at": null}}""");
         var client = MakeClient(transport);
         var retries = new List<int>();
         client.Retry += (_, args) => retries.Add(args.Attempt);
