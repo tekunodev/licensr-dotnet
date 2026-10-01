@@ -1,12 +1,18 @@
 # Licensr.Sdk (C# SDK)
 
-Official C# SDK for the [Licensr](https://licensr.app) license API: validation, seat/domain activation, offline EdDSA token verification, and hosted checkout. Targets `netstandard2.1` (Unity, older .NET) and `net8.0`; async-first with `System.Text.Json` source generation throughout so it stays IL2CPP-safe (no reflection-heavy serialization path). Its only runtime dependency is [BouncyCastle.Cryptography](https://github.com/bcgit/bc-csharp) — pure managed code (no P/Invoke, so also IL2CPP-safe) — for offline EdDSA verification, mirroring `sdks/js`'s own single dependency on `jose` for the same job.
+Official C# SDK for the [Licensr](https://licensr.app) license API: validation, seat/domain activation, offline EdDSA token verification, and hosted checkout. Targets `netstandard2.1` and `net8.0`; async-first with `System.Text.Json` source generation throughout so it stays IL2CPP-safe (no reflection-heavy serialization path). Its only runtime dependency is [BouncyCastle.Cryptography](https://github.com/bcgit/bc-csharp) — pure managed code (no P/Invoke, so also IL2CPP-safe) — for offline EdDSA verification, mirroring `sdks/js`'s own single dependency on `jose` for the same job.
 
-See the [plugin integration guide](https://docs.licensr.app/plugin-integration) for the underlying API's concepts (activation modes, entitlement/fallback, rate limits, the embedded-key doctrine) — this README covers the C#-specific surface.
+See the [License calls guide](https://docs.licensr.app/plugin-integration) for the underlying API's concepts (activation modes, entitlement/fallback, rate limits, the embedded-key doctrine) — this README covers the C#-specific surface.
+
+## Which hosts can load it
+
+The SDK needs a host on .NET Core 3.0+ / .NET 5+, or Unity 2021.2+. That covers cTrader, Revit and AutoCAD 2025+, and Rhino 8.
+
+It does **not** load in .NET Framework 4.8 hosts: NinjaTrader 8, Revit and AutoCAD 2024 and earlier, and Rhino 7. For those, make the plain web calls yourself with `HttpClient`. The [any-language guide](https://docs.licensr.app/guides/any-language) shows how.
 
 ## Install
 
-**NuGet** (.NET desktop/server, Godot's Mono backend, NinjaTrader/cTrader plugins):
+**NuGet** (.NET desktop/server, Godot's Mono backend, cTrader plugins):
 
 ```bash
 dotnet add package Licensr.Sdk
@@ -42,20 +48,20 @@ else if (result.Entitlement == Entitlement.Limited)
 
 The result keeps what you act on at the top level: `Valid`, `Status` (why, for your message), `Entitlement` and `FeatureFlags`. Plan and limit details are grouped under `result.License` (`PlanId`, `ActivationMode`, `MaxSeats`, `MaxDomains`, `SeatsInUse`, `ExpiresAt`). They are for display only; never use them to decide whether to unlock.
 
-Every method is `Task`-returning — `await` it directly, `yield return` it from a Unity coroutine, or call `.AsUniTask()` if you use [UniTask](https://github.com/Cysharp/UniTask).
+Every method is `Task`-returning — `await` it directly, wait for it in a Unity coroutine with `yield return new WaitUntil(() => task.IsCompleted)`, or call `.AsUniTask()` if you use [UniTask](https://github.com/Cysharp/UniTask).
 
 ## API
 
 Every method throws on failure — see [Errors](#errors).
 
-| Method                                                            | Wraps                          | Notes                                                                                                            |
-| ------------------------------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `client.ValidateAsync(new ValidateRequest {LicenseKey})`            | `POST /v1/license/validate`     | Always read `Valid`/`Entitlement`; never branch on HTTP status — an unknown key returns `200 {valid: false}`, not `404`. |
-| `client.TokenAsync(new ValidateRequest {LicenseKey})`               | `POST /v1/license/token`        | Same check as `ValidateAsync`, plus a short-lived signed offline token. See [Offline verification](#offline-verification). |
-| `client.ActivateAsync(new ActivateRequest {...})`                   | `POST /v1/license/activate`     | `ActivationType` is `Seat` (per-machine) or `Domain`, fixed by the plugin's configured mode.                     |
-| `client.DeactivateAsync(new DeactivateRequest {...})`               | `POST /v1/license/deactivate`   | Frees a seat/domain slot.                                                                                          |
-| `client.ActivationsAsync(new ActivationsRequest {LicenseKey})`      | `GET /v1/license/activations`   | Lists every current activation.                                                                                    |
-| `client.CheckoutAsync(new CheckoutRequest {...})`                   | `POST /v1/billing/checkout`     | Returns `CheckoutUrl` — direct the user there. Requires a key with the `checkout` scope.                          |
+| Method                                                         | Wraps                         | Notes                                                                                                                      |
+| -------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `client.ValidateAsync(new ValidateRequest {LicenseKey})`       | `POST /v1/license/validate`   | Always read `Valid`/`Entitlement`; never branch on HTTP status — an unknown key returns `200 {valid: false}`, not `404`.   |
+| `client.TokenAsync(new ValidateRequest {LicenseKey})`          | `POST /v1/license/token`      | Same check as `ValidateAsync`, plus a short-lived signed offline token. See [Offline verification](#offline-verification). |
+| `client.ActivateAsync(new ActivateRequest {...})`              | `POST /v1/license/activate`   | `ActivationType` is `Seat` (per-machine) or `Domain`, fixed by the plugin's configured mode.                               |
+| `client.DeactivateAsync(new DeactivateRequest {...})`          | `POST /v1/license/deactivate` | Frees a seat/domain slot.                                                                                                  |
+| `client.ActivationsAsync(new ActivationsRequest {LicenseKey})` | `GET /v1/license/activations` | Lists every current activation.                                                                                            |
+| `client.CheckoutAsync(new CheckoutRequest {...})`              | `POST /v1/billing/checkout`   | Returns `CheckoutUrl` — direct the user there. Requires a key with the `checkout` scope.                                   |
 
 ### Client options
 
@@ -118,18 +124,23 @@ if (cached is not null)
 
 ### Errors
 
-| Exception                          | When                                                                                                                                                                        |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Exception                           | When                                                                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `LicensrApiException`               | Non-2xx response. Has `Status`, `Code` (matches `contract/conformance.yaml`), `Message`, and `RetryAfterSeconds`. Branch on `Code`, not `Message` — the message is for humans. |
-| `LicensrNetworkException`           | The request never got a response (network failure, timeout, retries exhausted).                                                                                              |
-| `LicensrTokenVerificationException` | `OfflineTokenVerifier.VerifyAsync` rejected a bad signature, wrong algorithm, or an expired/not-yet-valid token.                                                              |
+| `LicensrNetworkException`           | The request never got a response (network failure, timeout, retries exhausted).                                                                                                |
+| `LicensrTokenVerificationException` | `OfflineTokenVerifier.VerifyAsync` rejected a bad signature, wrong algorithm, or an expired/not-yet-valid token.                                                               |
 
 ## Hardware/device IDs
 
 Unlike `sdks/cpp`, this SDK doesn't compute a hardware ID itself — a general-purpose `netstandard2.1` library has no portable way to do that, and Unity already provides one:
 
 ```csharp
-config.DeviceId = SystemInfo.deviceUniqueIdentifier; // Unity — reuse the same value for ActivateRequest.Identifier
+var config = new LicensrClientConfig
+{
+    ApiKey = "pk_live_...",
+    PluginSlug = "my-plugin",
+    DeviceId = SystemInfo.deviceUniqueIdentifier, // Unity — reuse the same value for ActivateRequest.Identifier
+};
 ```
 
 For non-Unity .NET desktop apps, generate and persist your own stable identifier (a GUID written to a config file on first run is sufficient) and pass it as both `DeviceId` and the seat `ActivateRequest.Identifier`.
@@ -143,7 +154,7 @@ The default `HttpClientTransport` (backed by `System.Net.Http.HttpClient`) works
 - **IL2CPP**: every (de)serialized type goes through a source-generated `JsonSerializerContext` (`LicensrJsonContext.cs`), not `System.Text.Json`'s reflection-based fallback — safe under ahead-of-time compilation. Unity's Roslyn version has supported C# source generators since 2021.2; older versions can't build this SDK from source (the prebuilt NuGet/UPM artifacts are unaffected either way).
 - **`System.Text.Json` on Unity**: Unity 2021.2+ with the **.NET Standard 2.1** API compatibility level includes it; older configurations may need `System.Text.Json.dll` (and its `System.Runtime.CompilerServices.Unsafe` dependency) added manually from NuGet.
 - **BouncyCastle.Cryptography**: required for offline verification and not bundled in the UPM package — see [`upm/README.md`](upm/README.md#required-dependency-bouncycastlecryptography).
-- **Coroutines/UniTask**: every method returns `Task<T>`, directly awaitable from an `async` Unity method, `yield return`-able from a coroutine, or convertible via UniTask's `.AsUniTask()`.
+- **Coroutines/UniTask**: every method returns `Task<T>`, directly awaitable from an `async` Unity method, waitable from a coroutine with `yield return new WaitUntil(() => task.IsCompleted)`, or convertible via UniTask's `.AsUniTask()`.
 
 ## Development
 
