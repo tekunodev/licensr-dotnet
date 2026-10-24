@@ -1,6 +1,6 @@
 {
   "name": "com.licensr.sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "displayName": "Licensr SDK",
   "description": "Official Licensr SDK for Unity: license validation, seat/domain activation, offline EdDSA token verification, and hosted checkout. Runtime/ is a straight copy of the NuGet package's C# source — see sdks/dotnet/scripts/sync-upm.sh.",
   "unity": "2021.2",
