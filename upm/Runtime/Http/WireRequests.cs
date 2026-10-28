@@ -58,6 +58,11 @@ internal sealed class CheckoutRequestWire
 
     [JsonPropertyName("cancel_url")]
     public string? CancelUrl { get; set; }
+
+    // Sent only when true, so servers without test clocks see the same body.
+    [JsonPropertyName("test_clock")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool TestClock { get; set; }
 }
 
 /// <summary>Every non-2xx license/billing response body: <c>{"detail": ...}</c>, where <c>detail</c> is either an object or a validation-error array — see <see cref="ErrorDetailWire"/>/<see cref="ValidationErrorItemWire"/>.</summary>

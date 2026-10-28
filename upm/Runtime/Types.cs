@@ -266,12 +266,19 @@ public sealed class CheckoutRequest
     public string? SuccessUrl { get; init; }
 
     public string? CancelUrl { get; init; }
+
+    /// <summary>Test keys (<c>pk_test_...</c>) only. Puts the buyer on a new Stripe test clock you can fast-forward to try renewals.</summary>
+    public bool TestClock { get; init; }
 }
 
 public sealed class CheckoutResult
 {
     [JsonPropertyName("checkout_url")]
     public string CheckoutUrl { get; set; } = "";
+
+    /// <summary>The Stripe test clock the buyer is on, when <see cref="CheckoutRequest.TestClock"/> asked for one.</summary>
+    [JsonPropertyName("test_clock_id")]
+    public string? TestClockId { get; set; }
 }
 
 internal sealed class ActivationTypeJsonConverter : JsonConverter<ActivationType>

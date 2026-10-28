@@ -201,5 +201,22 @@ public class LicensrClientTests
         var result = await client.CheckoutAsync(new CheckoutRequest { PlanId = "pro", CustomerEmail = "a@b.com" });
 
         Assert.Equal("https://pay.example/session", result.CheckoutUrl);
+        Assert.Null(result.TestClockId);
+        Assert.DoesNotContain("test_clock", transport.Requests[^1].Body);
+    }
+
+    [Fact]
+    public async Task CheckoutAsync_SendsTestClock_AndParsesTestClockId()
+    {
+        var transport = new FakeHttpTransport()
+            .EnqueueJson(200, """{"checkout_url": "https://pay.example/session", "test_clock_id": "clock_123"}""");
+        var client = MakeClient(transport);
+
+        var result = await client.CheckoutAsync(new CheckoutRequest { PlanId = "pro", CustomerEmail = "a@b.com", TestClock = true });
+
+        Assert.Equal("clock_123", result.TestClockId);
+        var sent = Assert.Single(transport.Requests);
+        Assert.Contains("v1/billing/checkout", sent.Url);
+        Assert.Contains("\"test_clock\":true", sent.Body);
     }
 }

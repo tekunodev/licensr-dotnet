@@ -63,6 +63,8 @@ Every method throws on failure — see [Errors](#errors).
 | `client.ActivationsAsync(new ActivationsRequest {LicenseKey})` | `GET /v1/license/activations` | Lists every current activation.                                                                                            |
 | `client.CheckoutAsync(new CheckoutRequest {...})`              | `POST /v1/billing/checkout`   | Returns `CheckoutUrl` — direct the user there. Requires a key with the `checkout` scope.                                   |
 
+With a test key (`pk_test_…`), set `TestClock = true` on `CheckoutRequest` to put the buyer on a Stripe test clock you can fast-forward to try renewals; the result returns its id as `TestClockId`.
+
 ### Client options
 
 ```csharp

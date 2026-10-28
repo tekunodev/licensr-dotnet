@@ -141,6 +141,7 @@ public sealed class LicensrClient
                 CustomerEmail = request.CustomerEmail,
                 SuccessUrl = request.SuccessUrl,
                 CancelUrl = request.CancelUrl,
+                TestClock = request.TestClock,
             };
             return _http.PostAsync(
                 "v1/billing/checkout",
