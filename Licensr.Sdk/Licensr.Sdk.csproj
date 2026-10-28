@@ -22,7 +22,7 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <PackageId>Licensr.Sdk</PackageId>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <Authors>Licensr</Authors>
     <Description>Official C# SDK for the Licensr license API: validation, seat/domain activation, offline EdDSA token verification, and hosted checkout. Targets netstandard2.1 (Unity, older .NET) and net8.0.</Description>
     <PackageProjectUrl>https://docs.licensr.app/plugin-integration</PackageProjectUrl>
