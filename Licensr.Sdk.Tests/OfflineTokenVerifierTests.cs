@@ -95,6 +95,24 @@ public class OfflineTokenVerifierTests
     }
 
     [Fact]
+    public async Task VerifyAsync_TokenForAnotherProduct_ThrowsWhenPluginSlugIsSet()
+    {
+        // Every product of a store signs with the same key.
+        OfflineTokenVerifier.ClearJwksCache();
+        var (token, jwksJson) = IssueToken();
+        var transport = new FakeHttpTransport().EnqueueJson(200, jwksJson);
+
+        var ex = await Assert.ThrowsAsync<LicensrTokenVerificationException>(
+            () => OfflineTokenVerifier.VerifyAsync(
+                token, JwksUrl, new VerifyOfflineTokenOptions { Transport = transport, PluginSlug = "other-plugin" }));
+        Assert.Contains("for product \"my-plugin\", not \"other-plugin\"", ex.Message);
+
+        var claims = await OfflineTokenVerifier.VerifyAsync(
+            token, JwksUrl, new VerifyOfflineTokenOptions { Transport = transport, PluginSlug = "my-plugin" });
+        Assert.Equal("my-plugin", claims.PluginSlug);
+    }
+
+    [Fact]
     public async Task VerifyAsync_LiveTokenAndTokenWithoutTheClaim_Verify()
     {
         foreach (var claim in new[] { ",\"livemode\":true", "" })

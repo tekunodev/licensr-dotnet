@@ -21,13 +21,21 @@ public sealed class VerifyOfflineTokenOptions
     /// uses a <c>pk_test_...</c> key.
     /// </summary>
     public bool AllowTestTokens { get; init; }
+
+    /// <summary>
+    /// Refuse a token issued for another product. Every product of a store signs with the
+    /// store's one key, so without this a token for one of your products also verifies for
+    /// another — set it to your plugin slug.
+    /// </summary>
+    public string? PluginSlug { get; init; }
 }
 
 /// <summary>
 /// Verify an offline license token (from <see cref="LicensrClient.TokenAsync"/>)
 /// fully offline: no network call beyond fetching (and caching) the
 /// plugin's public JWKS. Throws <see cref="LicensrTokenVerificationException"/>
-/// on a bad signature, wrong algorithm, an expired/not-yet-valid token, or a token
+/// on a bad signature, wrong algorithm, an expired/not-yet-valid token, a token for
+/// another product (with <see cref="VerifyOfflineTokenOptions.PluginSlug"/>), or a token
 /// minted with a test key (unless <see cref="VerifyOfflineTokenOptions.AllowTestTokens"/>).
 /// </summary>
 /// <remarks>
@@ -93,6 +101,11 @@ public static class OfflineTokenVerifier
             if (claims.Nbf - options.ClockToleranceSeconds > now)
             {
                 throw new LicensrTokenVerificationException("token is not yet valid ('nbf' is in the future)");
+            }
+
+            if (!string.IsNullOrEmpty(options.PluginSlug) && claims.PluginSlug != options.PluginSlug)
+            {
+                throw new LicensrTokenVerificationException($"token is for product \"{claims.PluginSlug}\", not \"{options.PluginSlug}\"");
             }
 
             // Tokens from before the claim existed carry none and are accepted.

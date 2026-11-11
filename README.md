@@ -107,6 +107,8 @@ Offline tokens carry no revocation signal — they prove the token was genuinely
 
 A token minted with a test key (`pk_test_…`) is refused, because test and live tokens are signed with the same key. In a test build, pass `new VerifyOfflineTokenOptions { AllowTestTokens = true }`.
 
+Set `PluginSlug = "my-plugin"` in the same options too: every product of your store signs with the same key, so without it a token for one of your products also unlocks another.
+
 To boot fully offline (no network at all, e.g. on first launch before any successful `TokenAsync` call), persist the last-known-good token yourself using the `IOfflineTokenStore` interface (`InMemoryOfflineTokenStore` is included, but doesn't survive a restart — back it with a config file, `PlayerPrefs`, or your platform's keychain):
 
 ```csharp
