@@ -226,6 +226,10 @@ public sealed class OfflineTokenClaims
     [JsonPropertyName("plugin_slug")]
     public string PluginSlug { get; set; } = "";
 
+    /// <summary><c>false</c> for a token minted with a test key; <c>null</c> on tokens from before the claim.</summary>
+    [JsonPropertyName("livemode")]
+    public bool? Livemode { get; set; }
+
     [JsonPropertyName("plan_id")]
     public string? PlanId { get; set; }
 

@@ -14,13 +14,21 @@ public sealed class VerifyOfflineTokenOptions
 
     /// <summary>Reject if the token's <c>exp</c>/<c>nbf</c> are further from now than this many seconds (clock skew tolerance). Default 60.</summary>
     public int ClockToleranceSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Accept tokens minted with a test key (claim <c>livemode: false</c>). Test and live tokens
+    /// share the signing key, so a shipped build must refuse them; set this only in a build that
+    /// uses a <c>pk_test_...</c> key.
+    /// </summary>
+    public bool AllowTestTokens { get; init; }
 }
 
 /// <summary>
 /// Verify an offline license token (from <see cref="LicensrClient.TokenAsync"/>)
 /// fully offline: no network call beyond fetching (and caching) the
 /// plugin's public JWKS. Throws <see cref="LicensrTokenVerificationException"/>
-/// on a bad signature, wrong algorithm, or an expired/not-yet-valid token.
+/// on a bad signature, wrong algorithm, an expired/not-yet-valid token, or a token
+/// minted with a test key (unless <see cref="VerifyOfflineTokenOptions.AllowTestTokens"/>).
 /// </summary>
 /// <remarks>
 /// Tokens carry no revocation signal — this only proves the token was
@@ -85,6 +93,12 @@ public static class OfflineTokenVerifier
             if (claims.Nbf - options.ClockToleranceSeconds > now)
             {
                 throw new LicensrTokenVerificationException("token is not yet valid ('nbf' is in the future)");
+            }
+
+            // Tokens from before the claim existed carry none and are accepted.
+            if (claims.Livemode == false && !options.AllowTestTokens)
+            {
+                throw new LicensrTokenVerificationException("token was minted with a test key (set AllowTestTokens in a test build)");
             }
 
             return claims;

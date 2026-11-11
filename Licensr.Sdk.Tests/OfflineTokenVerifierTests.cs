@@ -24,7 +24,8 @@ public class OfflineTokenVerifierTests
         string alg = "EdDSA",
         long? exp = null,
         long? nbf = null,
-        Ed25519PrivateKeyParameters? signingKey = null)
+        Ed25519PrivateKeyParameters? signingKey = null,
+        string livemodeClaim = "")
     {
         var random = new SecureRandom();
         var generator = new Ed25519KeyPairGenerator();
@@ -41,7 +42,7 @@ public class OfflineTokenVerifierTests
         var header = $$$"""{"alg":"{{{alg}}}","kid":"{{{kid}}}"}""";
         var payload = $$$"""
             {"sub":"lic_abc","iss":"https://api.licensr.app","iat":{{{now}}},"nbf":{{{nbf ?? now}}},
-             "exp":{{{exp ?? now + 3600}}},"plugin_slug":"my-plugin","plan_id":"pro","status":"active",
+             "exp":{{{exp ?? now + 3600}}},"plugin_slug":"my-plugin"{{{livemodeClaim}}},"plan_id":"pro","status":"active",
              "valid":true,"entitlement":"full","fallback":false,"activation_mode":"seat",
              "max_seats":3,"max_domains":null,"license_expires_at":null,"feature_flags":{"beta":true}}
             """;
@@ -73,6 +74,39 @@ public class OfflineTokenVerifierTests
         Assert.Equal(Entitlement.Full, claims.Entitlement);
         Assert.Equal(ActivationType.Seat, claims.ActivationMode);
         Assert.True(claims.FeatureFlags!.Value.GetProperty("beta").GetBoolean());
+    }
+
+    [Fact]
+    public async Task VerifyAsync_TestKeyToken_ThrowsUnlessAllowed()
+    {
+        // Test and live tokens share the signing key: only `livemode` stops a
+        // free test license from unlocking a shipped build.
+        OfflineTokenVerifier.ClearJwksCache();
+        var (token, jwksJson) = IssueToken(livemodeClaim: ",\"livemode\":false");
+        var transport = new FakeHttpTransport().EnqueueJson(200, jwksJson);
+
+        var ex = await Assert.ThrowsAsync<LicensrTokenVerificationException>(
+            () => OfflineTokenVerifier.VerifyAsync(token, JwksUrl, new VerifyOfflineTokenOptions { Transport = transport }));
+        Assert.Contains("minted with a test key", ex.Message);
+
+        var claims = await OfflineTokenVerifier.VerifyAsync(
+            token, JwksUrl, new VerifyOfflineTokenOptions { Transport = transport, AllowTestTokens = true });
+        Assert.False(claims.Livemode);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_LiveTokenAndTokenWithoutTheClaim_Verify()
+    {
+        foreach (var claim in new[] { ",\"livemode\":true", "" })
+        {
+            OfflineTokenVerifier.ClearJwksCache();
+            var (token, jwksJson) = IssueToken(livemodeClaim: claim);
+            var transport = new FakeHttpTransport().EnqueueJson(200, jwksJson);
+
+            var claims = await OfflineTokenVerifier.VerifyAsync(token, JwksUrl, new VerifyOfflineTokenOptions { Transport = transport });
+
+            Assert.Equal("lic_abc", claims.Sub);
+        }
     }
 
     [Fact]
