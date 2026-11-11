@@ -105,6 +105,8 @@ var claims = await OfflineTokenVerifier.VerifyAsync(token.Token, token.Details.J
 
 Offline tokens carry no revocation signal — they prove the token was genuinely issued and hasn't expired, not that the license is still active _right now_. Re-validate online before `Exp`.
 
+A token minted with a test key (`pk_test_…`) is refused, because test and live tokens are signed with the same key. In a test build, pass `new VerifyOfflineTokenOptions { AllowTestTokens = true }`.
+
 To boot fully offline (no network at all, e.g. on first launch before any successful `TokenAsync` call), persist the last-known-good token yourself using the `IOfflineTokenStore` interface (`InMemoryOfflineTokenStore` is included, but doesn't survive a restart — back it with a config file, `PlayerPrefs`, or your platform's keychain):
 
 ```csharp
